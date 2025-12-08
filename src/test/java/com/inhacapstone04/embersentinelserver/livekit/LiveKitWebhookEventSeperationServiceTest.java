@@ -111,28 +111,61 @@ class LiveKitWebhookEventSeperationServiceTest {
     }
 
     @Test
-    @DisplayName("Participant Joined 이벤트 - Metadata가 있으면 처리한다")
-    void handleWebhookEvent_ParticipantJoined() {
-        // Given
+    @DisplayName("카메라 비디오 트랙 게시 이벤트를 전달한다")
+    void handleWebhookEvent_VideoTrackPublished() {
         String body = "body";
         String authHeader = "auth";
-        String metadata = "{\"userId\":1}";
-
         LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
-        livekit.LivekitModels.ParticipantInfo mockParticipant = mock(livekit.LivekitModels.ParticipantInfo.class);
+        LivekitModels.ParticipantInfo mockParticipant = mock(LivekitModels.ParticipantInfo.class);
+        LivekitModels.Room mockRoom = mock(LivekitModels.Room.class);
+        LivekitModels.TrackInfo mockTrack = mock(LivekitModels.TrackInfo.class);
 
         given(webhookReceiver.receive(body, authHeader)).willReturn(mockEvent);
-        given(mockEvent.getEvent()).willReturn("participant_joined");
-
+        given(mockEvent.getEvent()).willReturn("track_published");
+        given(mockEvent.hasRoom()).willReturn(true);
         given(mockEvent.hasParticipant()).willReturn(true);
+        given(mockEvent.hasTrack()).willReturn(true);
+        given(mockEvent.getRoom()).willReturn(mockRoom);
         given(mockEvent.getParticipant()).willReturn(mockParticipant);
-        given(mockParticipant.getMetadata()).willReturn(metadata);
+        given(mockEvent.getTrack()).willReturn(mockTrack);
+        given(mockRoom.getName()).willReturn("fire_event_101");
+        given(mockParticipant.getIdentity()).willReturn("cam_7");
+        given(mockTrack.getType()).willReturn(LivekitModels.TrackType.VIDEO);
 
-        // When
         seperationService.handleWebhookEvent(body, authHeader);
 
-        // Then
-        verify(fireEventWebhookService, times(1)).processParticipantJoined(metadata);
+        verify(fireEventWebhookService).processTrackPublished("fire_event_101", "cam_7");
+        verify(mockParticipant, never()).getMetadata();
+    }
+
+    @Test
+    @DisplayName("오디오 트랙 게시로는 LIVE 전환을 요청하지 않는다")
+    void handleWebhookEvent_AudioTrackPublished() {
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        LivekitModels.TrackInfo mockTrack = mock(LivekitModels.TrackInfo.class);
+        given(webhookReceiver.receive("body", "auth")).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("track_published");
+        given(mockEvent.hasRoom()).willReturn(true);
+        given(mockEvent.hasParticipant()).willReturn(true);
+        given(mockEvent.hasTrack()).willReturn(true);
+        given(mockEvent.getTrack()).willReturn(mockTrack);
+        given(mockTrack.getType()).willReturn(LivekitModels.TrackType.AUDIO);
+
+        seperationService.handleWebhookEvent("body", "auth");
+
+        verifyNoInteractions(fireEventWebhookService);
+    }
+
+    @Test
+    @DisplayName("참여자 입장만으로는 LIVE 전환을 요청하지 않는다")
+    void handleWebhookEvent_ParticipantJoinedIgnored() {
+        LivekitWebhook.WebhookEvent mockEvent = mock(LivekitWebhook.WebhookEvent.class);
+        given(webhookReceiver.receive("body", "auth")).willReturn(mockEvent);
+        given(mockEvent.getEvent()).willReturn("participant_joined");
+
+        seperationService.handleWebhookEvent("body", "auth");
+
+        verifyNoInteractions(fireEventWebhookService);
     }
 
     @Test

@@ -23,31 +23,23 @@ public class FireEventWebhookService {
     private final ObjectMapper objectMapper;
     private final LiveKitManagementService liveKitManagementService;
 
-    /**
-     * [Webhook] 참여자 입장(participant_joined) 처리
-     * Publisher(라즈베리파이)가 입장하면 DB 상태를 LIVE로 변경합니다.
-     */
+    /** Publisher의 비디오 트랙이 게시되면 스트리밍 상태를 LIVE로 변경합니다. */
     @Transactional
-    public void processParticipantJoined(String metadataJson) {
-        if (metadataJson == null || metadataJson.isEmpty()) return;
+    public void processTrackPublished(String roomName, String participantIdentity) {
+        if (roomName == null || roomName.isEmpty() || participantIdentity == null) return;
 
-        try {
-            JsonNode metadataNode = objectMapper.readTree(metadataJson);
+        MediaStream mediaStream = mediaStreamRepository.findByLivekitRoomName(roomName)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND_BY_ID,
+                        "MediaStream not found for LiveKit room: " + roomName));
+        Long cameraId = mediaStream.getFireEvent().getCameraEdge().getId();
+        if (!("cam_" + cameraId).equals(participantIdentity)) {
+            log.info("Ignoring track from non-publisher participant: {}", participantIdentity);
+            return;
+        }
 
-            if (isPublisher(metadataNode)) {
-                Long fireEventId = extractFireEventId(metadataNode);
-                if (fireEventId == null) return;
-
-                MediaStream mediaStream = findMediaStream(fireEventId);
-
-                // 스트리밍 상태 업데이트 (PENDING -> LIVE)
-                if (mediaStream.getStreamingStatus() == StreamingStatus.PENDING) {
-                    mediaStream.setStreamingStatus(StreamingStatus.LIVE);
-                    log.info("Streaming Status Updated to LIVE for FireEvent ID: {}", fireEventId);
-                }
-            }
-        } catch (JsonProcessingException e) {
-            log.error("Failed to parse participant metadata: {}", metadataJson, e);
+        if (mediaStream.getStreamingStatus() == StreamingStatus.PENDING) {
+            mediaStream.setStreamingStatus(StreamingStatus.LIVE);
+            log.info("Streaming Status Updated to LIVE for FireEvent ID: {}", mediaStream.getFireEvent().getId());
         }
     }
 

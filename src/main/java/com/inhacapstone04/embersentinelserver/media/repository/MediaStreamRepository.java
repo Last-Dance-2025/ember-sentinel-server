@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface MediaStreamRepository extends JpaRepository<MediaStream, Long> {
     Optional<MediaStream> findByFireEvent_Id(Long fireEventId);
+    Optional<MediaStream> findByLivekitRoomName(String livekitRoomName);
 }

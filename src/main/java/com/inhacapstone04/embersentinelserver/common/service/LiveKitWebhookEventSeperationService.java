@@ -6,6 +6,7 @@ import com.inhacapstone04.embersentinelserver.fire_event.service.FireEventWebhoo
 import com.inhacapstone04.embersentinelserver.media.service.MediaRecordCommandService;
 import io.livekit.server.WebhookReceiver;
 import livekit.LivekitEgress;
+import livekit.LivekitModels;
 import livekit.LivekitWebhook;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,9 +35,9 @@ public class LiveKitWebhookEventSeperationService {
 
             // 2. 이벤트 타입별 로직 분기
             switch (eventType) {
-                case "participant_joined":
-                    log.info("--- Handling Participant Joined ---");
-                    handleParticipantJoined(event);
+                case "track_published":
+                    log.info("--- Handling Track Published ---");
+                    handleTrackPublished(event);
                     break;
                 case "participant_left":
                 case "participant_disconnected":
@@ -57,29 +58,18 @@ public class LiveKitWebhookEventSeperationService {
         }
     }
 
-    private void handleParticipantJoined(LivekitWebhook.WebhookEvent event) {
-        if (event.hasParticipant()) {
-            // 참여자 식별자(Identity) 확인
-            String identity = event.getParticipant().getIdentity();
-
-            // Egress 봇(녹화기)인지 확인하고 로그만 출력 후 종료
-            if (identity != null && identity.startsWith("EG_")) {
-                log.info(">>> [Participant Joined] Egress Bot (Recorder) entered. Identity: {} (Skipping logic)", identity);
-                return;
-            }
-
-            String metadata = event.getParticipant().getMetadata();
-            log.info("Participant Joined Metadata: {}", metadata);
-
-            if (metadata != null && !metadata.isEmpty()) {
-                fireEventWebhookService.processParticipantJoined(metadata);
-                log.info("Processed Participant Joined logic successfully.");
-            } else {
-                log.warn("Participant Joined but Metadata is empty.");
-            }
-        } else {
-            log.warn("Event has no participant info.");
+    private void handleTrackPublished(LivekitWebhook.WebhookEvent event) {
+        if (!event.hasRoom() || !event.hasParticipant() || !event.hasTrack()) {
+            log.warn("Track Published event is missing room, participant, or track info.");
+            return;
         }
+
+        if (event.getTrack().getType() != LivekitModels.TrackType.VIDEO) {
+            return;
+        }
+
+        fireEventWebhookService.processTrackPublished(
+                event.getRoom().getName(), event.getParticipant().getIdentity());
     }
 
     private void handleParticipantDisconnected(LivekitWebhook.WebhookEvent event) {

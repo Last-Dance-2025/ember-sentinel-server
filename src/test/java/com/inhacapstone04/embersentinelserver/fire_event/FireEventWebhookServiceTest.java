@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhacapstone04.embersentinelserver.common.exception.CustomException;
 import com.inhacapstone04.embersentinelserver.common.exception.ErrorCode;
 import com.inhacapstone04.embersentinelserver.common.service.LiveKitManagementService;
+import com.inhacapstone04.embersentinelserver.camera_edge.entity.CameraEdge;
+import com.inhacapstone04.embersentinelserver.fire_event.entity.FireEvent;
 import com.inhacapstone04.embersentinelserver.fire_event.service.FireEventWebhookService;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
 import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
@@ -45,42 +47,66 @@ class FireEventWebhookServiceTest {
     private final String SUBSCRIBER_METADATA = "{\"type\":\"SUBSCRIBER\", \"userId\":10}";
     private final String ROOM_NAME = "fire_event_101";
 
-    // --- processParticipantJoined Tests ---
+    // --- processTrackPublished Tests ---
 
     @Test
-    @DisplayName("입장 성공: Publisher가 입장하면 스트리밍 상태를 LIVE로 변경한다.")
-    void processParticipantJoined_Success() {
-        // Given
+    @DisplayName("카메라 비디오 게시 시 PENDING 스트림을 LIVE로 변경한다")
+    void processTrackPublished_Success() {
         MediaStream mediaStream = mock(MediaStream.class);
+        FireEvent fireEvent = mock(FireEvent.class);
+        CameraEdge camera = mock(CameraEdge.class);
+        when(mediaStream.getFireEvent()).thenReturn(fireEvent);
+        when(fireEvent.getCameraEdge()).thenReturn(camera);
+        when(camera.getId()).thenReturn(7L);
+        when(fireEvent.getId()).thenReturn(FIRE_EVENT_ID);
         when(mediaStream.getStreamingStatus()).thenReturn(StreamingStatus.PENDING);
-        when(mediaStreamRepository.findByFireEvent_Id(FIRE_EVENT_ID)).thenReturn(Optional.of(mediaStream));
+        when(mediaStreamRepository.findByLivekitRoomName(ROOM_NAME)).thenReturn(Optional.of(mediaStream));
 
-        // When
-        fireEventWebhookService.processParticipantJoined(PUBLISHER_METADATA);
+        fireEventWebhookService.processTrackPublished(ROOM_NAME, "cam_7");
 
-        // Then
         verify(mediaStream).setStreamingStatus(StreamingStatus.LIVE);
     }
 
     @Test
-    @DisplayName("입장 무시: Subscriber가 입장한 경우 로직을 수행하지 않는다.")
-    void processParticipantJoined_Ignore_Subscriber() {
-        // When
-        fireEventWebhookService.processParticipantJoined(SUBSCRIBER_METADATA);
+    @DisplayName("다른 참여자의 트랙은 LIVE로 변경하지 않는다")
+    void processTrackPublished_IgnoreOtherParticipant() {
+        MediaStream mediaStream = mock(MediaStream.class);
+        FireEvent fireEvent = mock(FireEvent.class);
+        CameraEdge camera = mock(CameraEdge.class);
+        when(mediaStream.getFireEvent()).thenReturn(fireEvent);
+        when(fireEvent.getCameraEdge()).thenReturn(camera);
+        when(camera.getId()).thenReturn(7L);
+        when(mediaStreamRepository.findByLivekitRoomName(ROOM_NAME)).thenReturn(Optional.of(mediaStream));
 
-        // Then
-        verify(mediaStreamRepository, never()).findByFireEvent_Id(anyLong());
+        fireEventWebhookService.processTrackPublished(ROOM_NAME, "cam_8");
+
+        verify(mediaStream, never()).setStreamingStatus(any());
     }
 
     @Test
-    @DisplayName("입장 실패: MediaStream을 찾을 수 없는 경우 예외 발생")
-    void processParticipantJoined_Fail_NotFound() {
-        // Given
-        when(mediaStreamRepository.findByFireEvent_Id(FIRE_EVENT_ID)).thenReturn(Optional.empty());
+    @DisplayName("종료된 스트림은 다시 LIVE로 변경하지 않는다")
+    void processTrackPublished_AlreadyEnded() {
+        MediaStream mediaStream = mock(MediaStream.class);
+        FireEvent fireEvent = mock(FireEvent.class);
+        CameraEdge camera = mock(CameraEdge.class);
+        when(mediaStream.getFireEvent()).thenReturn(fireEvent);
+        when(fireEvent.getCameraEdge()).thenReturn(camera);
+        when(camera.getId()).thenReturn(7L);
+        when(mediaStream.getStreamingStatus()).thenReturn(StreamingStatus.ENDED);
+        when(mediaStreamRepository.findByLivekitRoomName(ROOM_NAME)).thenReturn(Optional.of(mediaStream));
 
-        // When & Then
+        fireEventWebhookService.processTrackPublished(ROOM_NAME, "cam_7");
+
+        verify(mediaStream, never()).setStreamingStatus(any());
+    }
+
+    @Test
+    @DisplayName("방에 해당하는 스트림이 없으면 예외를 던진다")
+    void processTrackPublished_Fail_NotFound() {
+        when(mediaStreamRepository.findByLivekitRoomName(ROOM_NAME)).thenReturn(Optional.empty());
+
         CustomException exception = assertThrows(CustomException.class, () ->
-                fireEventWebhookService.processParticipantJoined(PUBLISHER_METADATA)
+                fireEventWebhookService.processTrackPublished(ROOM_NAME, "cam_7")
         );
 
         assertThat(exception.getCode()).isEqualTo(ErrorCode.NOT_FOUND_BY_ID);
