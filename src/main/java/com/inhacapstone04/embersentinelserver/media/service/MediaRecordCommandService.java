@@ -40,7 +40,7 @@ public class MediaRecordCommandService {
         }
 
         // 2. FireEvent 조회
-        FireEvent fireEvent = fireEventRepository.findByIdForUpdate(eventId)
+        FireEvent fireEvent = fireEventRepository.findById(eventId)
                 .orElseThrow(() -> new CustomException(
                         ErrorCode.NOT_FOUND_BY_ID,
                         "MediaRecord 저장 중 FireEvent를 찾을 수 없습니다. ID: " + eventId

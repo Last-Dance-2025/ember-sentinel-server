@@ -21,6 +21,6 @@ public class MediaRecord extends CreatedAtEntity {
     private String s3BucketPath;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "fire_event_id", nullable = false)
+    @JoinColumn(name = "fire_event_id", nullable = false, unique = true)
     private FireEvent fireEvent;
 }

@@ -26,7 +26,7 @@ class MediaRecordCommandServiceUnitTest {
     @Test
     void savesFirstRecording() {
         FireEvent fireEvent = new FireEvent();
-        when(fireEventRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(fireEvent));
+        when(fireEventRepository.findById(101L)).thenReturn(Optional.of(fireEvent));
 
         service.saveRecording("fire_event_101", "recordings/fire_event_101.mp4");
 
@@ -37,7 +37,7 @@ class MediaRecordCommandServiceUnitTest {
 
     @Test
     void ignoresRedeliveredRecording() {
-        when(fireEventRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(new FireEvent()));
+        when(fireEventRepository.findById(101L)).thenReturn(Optional.of(new FireEvent()));
         when(mediaRecordRepository.existsByFireEvent_Id(101L)).thenReturn(false, true);
 
         service.saveRecording("fire_event_101", "recordings/fire_event_101.mp4");
