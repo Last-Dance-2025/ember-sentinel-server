@@ -90,7 +90,7 @@ class FireEventQueryServiceTest {
         eventA = createFireEvent(cameraA);
 
         // 6. 연관 데이터 생성 (Stream, Record)
-        createMediaStream(eventA, "stream-key-a");
+        createMediaStream(eventA, "stream-key-a", StreamingStatus.LIVE);
         createMediaRecord(eventA, "s3/path/record-a.mp4");
 
         em.flush();
@@ -274,7 +274,7 @@ class FireEventQueryServiceTest {
         // Given
         // Room B의 카메라 B에서 발생한 이벤트 생성
         FireEvent eventB = createFireEvent(cameraB);
-        createMediaStream(eventB, "stream-key-b");
+        createMediaStream(eventB, "stream-key-b", StreamingStatus.LIVE);
         em.flush();
         em.clear();
 
@@ -305,6 +305,26 @@ class FireEventQueryServiceTest {
         assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, eventId))
                 .isInstanceOf(CustomException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND_BY_ID);
+    }
+
+    @Test
+    @DisplayName("시청 토큰 발급 실패: 스트림이 LIVE 상태가 아님 (409 CONFLICT)")
+    void getFireEventWatchToken_Fail_StreamNotLive() {
+        // Given
+        // 이미 종료된(ENDED) 스트림을 가진 이벤트 생성
+        FireEvent eventEnded = createFireEvent(cameraA);
+        createMediaStream(eventEnded, "stream-key-ended", StreamingStatus.ENDED);
+        em.flush();
+        em.clear();
+
+        Long userId = memberUser.getId();
+        Long roomId = roomA.getId();
+        Long eventId = eventEnded.getId();
+
+        // When & Then
+        assertThatThrownBy(() -> fireEventQueryService.getFireEventWatchToken(userId, roomId, eventId))
+                .isInstanceOf(CustomException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.STREAM_NOT_LIVE);
     }
 
     // --- Helper Methods ---
@@ -354,11 +374,11 @@ class FireEventQueryServiceTest {
         return fireEventRepository.save(event);
     }
 
-    private MediaStream createMediaStream(FireEvent event, String streamKey) {
+    private MediaStream createMediaStream(FireEvent event, String streamKey, StreamingStatus status) {
         MediaStream stream = new MediaStream();
         stream.setFireEvent(event);
         stream.setLivekitRoomName(streamKey);
-        stream.setStreamingStatus(StreamingStatus.ENDED);
+        stream.setStreamingStatus(status);
         return mediaStreamRepository.save(stream);
     }
 

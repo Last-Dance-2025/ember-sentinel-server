@@ -15,6 +15,7 @@ import com.inhacapstone04.embersentinelserver.fire_event.repository.FireEventRep
 import com.inhacapstone04.embersentinelserver.media.dto.MediaRecordDTO;
 import com.inhacapstone04.embersentinelserver.media.dto.MediaStreamDTO;
 import com.inhacapstone04.embersentinelserver.media.entity.MediaStream;
+import com.inhacapstone04.embersentinelserver.media.entity.StreamingStatus;
 import com.inhacapstone04.embersentinelserver.room.repository.UserRoomMembershipRepository;
 import com.inhacapstone04.embersentinelserver.user.entity.User;
 import com.inhacapstone04.embersentinelserver.user.repository.UserRepository;
@@ -130,6 +131,9 @@ public class FireEventQueryService {
         MediaStream mediaStream = fireEvent.getMediaStream();
         if (mediaStream == null) {
             throw new CustomException(ErrorCode.NOT_FOUND_BY_ID, "해당 이벤트에 대한 스트리밍 정보가 존재하지 않습니다.");
+        }
+        if (mediaStream.getStreamingStatus() != StreamingStatus.LIVE) {
+            throw new CustomException(ErrorCode.STREAM_NOT_LIVE);
         }
         String livekitRoomName = mediaStream.getLivekitRoomName();
 
