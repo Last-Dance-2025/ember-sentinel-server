@@ -92,6 +92,20 @@ class MediaRecordCommandServiceTest {
     }
 
     @Test
+    @DisplayName("같은 녹화 웹훅이 재전송되어도 MediaRecord는 하나만 저장한다")
+    void saveRecording_DuplicateWebhook() {
+        String roomName = "fire_event_" + savedFireEvent.getId();
+        String s3Url = "recordings/" + roomName + ".mp4";
+
+        mediaRecordCommandService.saveRecording(roomName, s3Url);
+        mediaRecordCommandService.saveRecording(roomName, s3Url);
+
+        assertThat(mediaRecordRepository.findAll())
+                .singleElement()
+                .satisfies(record -> assertThat(record.getS3BucketPath()).isEqualTo(s3Url));
+    }
+
+    @Test
     @DisplayName("실패(무시): 방 이름 포맷이 올바르지 않은 경우 (저장하지 않고 종료)")
     void saveRecording_Fail_InvalidFormat() {
         // Given

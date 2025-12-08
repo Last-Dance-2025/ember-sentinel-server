@@ -40,11 +40,16 @@ public class MediaRecordCommandService {
         }
 
         // 2. FireEvent 조회
-        FireEvent fireEvent = fireEventRepository.findById(eventId)
+        FireEvent fireEvent = fireEventRepository.findByIdForUpdate(eventId)
                 .orElseThrow(() -> new CustomException(
                         ErrorCode.NOT_FOUND_BY_ID,
                         "MediaRecord 저장 중 FireEvent를 찾을 수 없습니다. ID: " + eventId
                 ));
+
+        if (mediaRecordRepository.existsByFireEvent_Id(eventId)) {
+            log.info("MediaRecord already exists for FireEvent ID: {}. Ignoring duplicate webhook.", eventId);
+            return;
+        }
 
         // 3. MediaRecord 엔티티 생성 및 저장
         MediaRecord mediaRecord = new MediaRecord();

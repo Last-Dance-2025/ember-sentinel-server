@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MediaRecordRepository extends JpaRepository<MediaRecord, Long> {
+    boolean existsByFireEvent_Id(Long fireEventId);
 }
