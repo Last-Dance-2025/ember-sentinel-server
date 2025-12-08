@@ -14,12 +14,14 @@
 ## 기술 스택
 
 - **Backend Framework**: Java 17, Spring Boot 3.x, Spring Data JPA
-- **Database & Cache**: PostgreSQL, Redis
+- **Database & Cache**: 
+  - PostgreSQL (건물/방/카메라 등 구조화된 도메인의 무결성 관리 및 화재 이벤트 영상 메타데이터의 안정적인 영구 저장)
+  - Redis (사용자 인증 토큰 관리 및 비동기 형태의 FCM 푸시 알림 데이터의 빠른 I/O 처리를 위한 인메모리 캐싱)
 - **Third-party Services**: 
   - LiveKit (WebRTC 스트리밍 및 Egress 녹화)
   - Firebase Cloud Messaging (FCM 실시간 푸시 알림)
   - AWS S3 (영상 녹화본 저장 및 Presigned URL 제공)
-- **Security & API Docs**: Spring Security, JJWT, Springdoc OpenAPI (Swagger UI)
+- **Security & API Docs**: JWT, Springdoc OpenAPI (Swagger UI)
 
 ## API 명세서
 
